@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="description" content="Платформа управления мероприятиями: регистрация участников, расписание, спикеры и билеты.">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <script>
+    (function () {
+      var d = document.documentElement, t = null, a = null;
+      try { t = localStorage.getItem('theme'); a = JSON.parse(localStorage.getItem('accent') || 'null'); } catch (e) {}
+      if (t !== 'light' && t !== 'dark' && t !== 'contrast') {
+        t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      d.setAttribute('data-theme', t);
+      if (a && a.on) {
+        d.style.setProperty('--accent-r', a.r); d.style.setProperty('--accent-g', a.g);
+        d.style.setProperty('--accent-b', a.b); d.style.setProperty('--on-accent', a.on);
+      }
+    })();
+  </script>
+  <title>Управление мероприятиями</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Перейти к основному контенту</a>
+  <header class="site-header">
+    <button type="button" id="burger" class="burger" aria-label="Открыть меню" aria-expanded="false" aria-controls="sidebar">
+      <span class="burger__bar"></span><span class="burger__bar"></span><span class="burger__bar"></span>
+    </button>
+    <hgroup>
+      <h1>Управление мероприятиями</h1>
+      <p>Регистрация, расписание, спикеры и билеты</p>
+    </hgroup>
+    <details class="theme-menu" id="theme-menu">
+      <summary class="btn btn--ghost" aria-label="Оформление: тема и акцентный цвет"><span aria-hidden="true">&#9680;</span><span class="theme-menu__text">Тема</span></summary>
+      <div class="theme-menu__panel">
+        <div class="field">
+          <label class="field__label" for="theme-select">Тема оформления</label>
+          <select id="theme-select" class="select">
+            <option value="auto">Авто (как в системе)</option>
+            <option value="light">Светлая</option>
+            <option value="dark">Тёмная</option>
+            <option value="contrast">Высокий контраст</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="accent">Акцентный цвет</label>
+          <input type="color" id="accent" class="color" value="#754ae2">
+          <output id="accent-hex" for="accent"></output>
+        </div>
+        <button type="button" id="accent-reset" class="btn btn--ghost" disabled>Сбросить цвет</button>
+      </div>
+    </details>
+  </header>
+  <div class="overlay" id="overlay" aria-hidden="true"></div>
+
+  <nav id="sidebar" class="sidebar" aria-label="Разделы">
+    <figure class="logo">
+      <img src="icon.svg" alt="Значок календаря мероприятия" width="48" height="48">
+      <figcaption>Событие</figcaption>
+    </figure>
+    <ul>
+      <li><a href="#overview">Обзор</a></li>
+      <li><a href="#events">Мероприятия</a></li>
+      <li><a href="#requests">Запросы участников</a></li>
+    </ul>
+  </nav>
+
+  <main id="main" tabindex="-1">
+    <section id="overview" aria-labelledby="h-overview">
+      <h2 id="h-overview">Обзор</h2>
+      <div id="summary"></div>
+    </section>
+
+    <section id="events" aria-labelledby="h-events">
+      <div class="section-head">
+        <h2 id="h-events">Мероприятия</h2>
+        <button type="button" id="add-event" class="btn"><span aria-hidden="true">+</span> Добавить мероприятие</button>
+      </div>
+      <form id="filters" class="filters" aria-label="Фильтры мероприятий">
+        <div class="field">
+          <label class="field__label" for="q">Поиск</label>
+          <input id="q" class="input" type="search" placeholder="Название, город, спикер, тег" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="field__label" for="status">Статус</label>
+          <select id="status" class="select">
+            <option value="all">Все</option>
+            <option value="registration">Регистрация открыта</option>
+            <option value="soldout">Мест нет</option>
+            <option value="draft">Черновик</option>
+            <option value="finished">Завершено</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="format">Формат</label>
+          <select id="format" class="select">
+            <option value="all">Все</option>
+            <option value="conference">Конференция</option>
+            <option value="workshop">Мастер-класс</option>
+            <option value="meetup">Митап</option>
+            <option value="webinar">Вебинар</option>
+            <option value="forum">Форум</option>
+            <option value="festival">Фестиваль</option>
+          </select>
+        </div>
+        <fieldset class="field">
+          <legend class="field__label">Доступ</legend>
+          <input class="check" type="checkbox" id="a-paid" name="access" value="paid" checked><label for="a-paid">Платные</label>
+          <input class="check" type="checkbox" id="a-free" name="access" value="free" checked><label for="a-free">Бесплатные</label>
+        </fieldset>
+        <fieldset class="field">
+          <legend class="field__label">Вид</legend>
+          <input class="radio" type="radio" id="v-cards" name="view" value="cards" checked><label for="v-cards">Карточки</label>
+          <input class="radio" type="radio" id="v-table" name="view" value="table"><label for="v-table">Таблица</label>
+        </fieldset>
+        <button type="reset" id="reset" class="btn btn--ghost" disabled>Сбросить</button>
+        <output id="result-count" for="q status format"></output>
+      </form>
+      <div id="event-view"></div>
+      <nav id="pagination" class="pagination-nav" aria-label="Постраничная навигация по мероприятиям" hidden></nav>
+    </section>
+
+    <section id="requests" aria-labelledby="h-requests">
+      <h2 id="h-requests">Запросы участников</h2>
+      <div id="tablist" class="tablist" role="tablist" aria-label="Запросы по статусу">
+        <button type="button" role="tab" class="tab" id="tab-all" aria-controls="tabpanel" aria-selected="true" tabindex="0" data-status="all">Все <span class="tab__count">0</span></button>
+        <button type="button" role="tab" class="tab" id="tab-new" aria-controls="tabpanel" aria-selected="false" tabindex="-1" data-status="new">Новые <span class="tab__count">0</span></button>
+        <button type="button" role="tab" class="tab" id="tab-inWork" aria-controls="tabpanel" aria-selected="false" tabindex="-1" data-status="inWork">В работе <span class="tab__count">0</span></button>
+        <button type="button" role="tab" class="tab" id="tab-closed" aria-controls="tabpanel" aria-selected="false" tabindex="-1" data-status="closed">Закрытые <span class="tab__count">0</span></button>
+      </div>
+      <div id="tabpanel" class="tabpanel" role="tabpanel" aria-labelledby="tab-all"></div>
+    </section>
+  </main>
+
+  <aside class="panel" aria-labelledby="h-panel">
+    <h2 id="h-panel">Требуют внимания</h2>
+    <div id="request-panel"></div>
+  </aside>
+
+  <footer class="site-footer">
+    <p>Служба поддержки участников</p>
+    <address>
+      <a href="mailto:support@example.com">support@example.com</a>, Москва, Россия
+    </address>
+  </footer>
+
+  <dialog id="modal" class="modal" aria-labelledby="modal-title">
+    <article class="modal__box">
+      <header class="modal__head">
+        <h2 id="modal-title">Детали мероприятия</h2>
+        <button type="button" data-close id="modal-x" class="btn btn--ghost btn--icon" aria-label="Закрыть окно">&times;</button>
+      </header>
+      <div id="modal-body" class="modal__body"></div>
+      <footer class="modal__foot">
+        <button type="button" id="modal-copy" class="btn btn--ghost">Копировать ID</button>
+        <button type="button" data-close id="modal-close" class="btn">Закрыть</button>
+      </footer>
+    </article>
+  </dialog>
+
+  <div id="toasts" class="toasts" popover="manual"></div>
+  <p id="live" class="sr-only" role="status"></p>
+
+  <dialog id="form-modal" class="modal" aria-labelledby="form-title">
+    <form id="event-form" class="modal__box" novalidate>
+      <header class="modal__head">
+        <h2 id="form-title">Добавить мероприятие</h2>
+        <button type="button" data-close class="btn btn--ghost btn--icon" aria-label="Закрыть окно">&times;</button>
+      </header>
+      <section class="modal__body form-grid" aria-label="Данные мероприятия">
+        <div class="field">
+          <label class="field__label" for="f-title">Название <span class="req" aria-hidden="true">*</span></label>
+          <input id="f-title" name="title" class="input" type="text" required minlength="3" maxlength="80" autocomplete="off" autofocus data-validate aria-invalid="false" aria-describedby="f-title-hint f-title-error">
+          <p id="f-title-hint" class="field__hint">От 3 до 80 символов</p>
+          <p id="f-title-error" class="field__error" aria-live="polite" hidden></p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="f-date">Дата проведения <span class="req" aria-hidden="true">*</span></label>
+          <input id="f-date" name="date" class="input" type="date" required data-validate aria-invalid="false" aria-describedby="f-date-error">
+          <p id="f-date-error" class="field__error" aria-live="polite" hidden></p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="f-format">Формат <span class="req" aria-hidden="true">*</span></label>
+          <select id="f-format" name="format" class="select" required data-validate aria-invalid="false" aria-describedby="f-format-error">
+            <option value="">Выберите формат</option>
+            <option value="conference">Конференция</option>
+            <option value="workshop">Мастер-класс</option>
+            <option value="meetup">Митап</option>
+            <option value="webinar">Вебинар</option>
+            <option value="forum">Форум</option>
+            <option value="festival">Фестиваль</option>
+          </select>
+          <p id="f-format-error" class="field__error" aria-live="polite" hidden></p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="f-email">Email организатора <span class="req" aria-hidden="true">*</span></label>
+          <input id="f-email" name="email" class="input" type="email" required maxlength="60" autocomplete="email" data-validate aria-invalid="false" aria-describedby="f-email-error">
+          <p id="f-email-error" class="field__error" aria-live="polite" hidden></p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="f-description">Описание</label>
+          <textarea id="f-description" name="description" class="input" rows="3" data-validate aria-invalid="false" aria-describedby="f-description-count f-description-error"></textarea>
+          <p id="f-description-count" class="field__hint">0 / 160</p>
+          <p id="f-description-error" class="field__error" aria-live="polite" hidden></p>
+        </div>
+      </section>
+      <footer class="modal__foot">
+        <button type="button" data-close class="btn btn--ghost">Отмена</button>
+        <button type="submit" class="btn">Добавить</button>
+      </footer>
+    </form>
+  </dialog>
+</body>
+</html>
